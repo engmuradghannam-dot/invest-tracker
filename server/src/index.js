@@ -277,6 +277,18 @@ app.get("/api/dashboard", wrap(async (_req, res) => {
 // ── Health check ──
 app.get("/health", (_req, res) => res.json({ status: "ok", time: new Date().toISOString() }));
 
+
+// ── Setup endpoint (run once to create tables) ──
+app.get("/api/setup", wrap(async (_req, res) => {
+  try {
+    const { execSync } = await import("child_process");
+    execSync("npx prisma db push --accept-data-loss", { timeout: 60000 });
+    res.json({ success: true, message: "Database tables created" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}));
+
 // ── معالج الأخطاء ──────────────────────────────────────
 app.use((err, _req, res, _next) => {
   if (err instanceof z.ZodError) {
@@ -291,6 +303,14 @@ app.use((err, _req, res, _next) => {
   if (err.message?.startsWith("نوع الملف")) return res.status(415).json({ error: err.message });
   if (err.code === "P2025") return res.status(404).json({ error: "السجل غير موجود" });
   if (err.code === "P2003") return res.status(400).json({ error: "مرجع غير موجود" });
+  // Graceful handling for missing tables
+  if (err.message?.includes("does not exist") || err.message?.includes("relation") || err.code?.startsWith("P10")) {
+    console.error("Database tables missing:", err.message);
+    return res.status(503).json({ 
+      error: "قاعدة البيانات غير مهيأة",
+      setup: "Visit /api/setup to initialize database"
+    });
+  }
   console.error(err);
   res.status(500).json({ error: "خطأ في الخادم" });
 });
@@ -333,25 +353,8 @@ app.get("*", (_req, res) => {
   res.sendFile(path.join(staticDir, "index.html"));
 });
 
-// ── Database connection with retry ──
-async function connectDB(retries = 5) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      await prisma.$connect();
-      console.log("✅ Database connected");
-      return;
-    } catch (e) {
-      console.log(`⏳ DB connection attempt ${i + 1}/${retries} failed, retrying...`);
-      await new Promise(r => setTimeout(r, 3000));
-    }
-  }
-  console.error("❌ Could not connect to database after retries");
-}
-
 const PORT = process.env.PORT || 4000;
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`✅ API running on port ${PORT}`);
-    if (process.env.SMTP_HOST) startReminderJob(prisma);
-  });
+app.listen(PORT, () => {
+  console.log(`✅ API running on port ${PORT}`);
+  if (process.env.SMTP_HOST) startReminderJob(prisma);
 });
