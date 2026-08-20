@@ -23,5 +23,5 @@ RUN mkdir -p /tmp/uploads
 # Expose port
 EXPOSE 4000
 
-# Start: push DB schema then start server
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node src/index.js"]
+# Start with robust startup script
+CMD ["node", "start.js"]
