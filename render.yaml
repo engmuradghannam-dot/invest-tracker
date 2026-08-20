@@ -13,20 +13,16 @@ services:
       - key: PORT
         value: 4000
       - key: UPLOAD_DIR
-        value: ./uploads
+        value: /tmp/uploads
       - key: OPEN_ENDED_CYCLES
         value: 24
       - key: AUTH_USER
         value: admin
       - key: AUTH_PASS
-        generateValue: true
+        value: ghannam2020
       - key: NODE_ENV
         value: production
     healthCheckPath: /health
-    disk:
-      name: uploads
-      mountPath: /app/uploads
-      sizeGB: 1
 
 databases:
   - name: invest-db

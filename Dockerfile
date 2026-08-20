@@ -37,7 +37,7 @@ COPY server/ ./
 COPY --from=builder /app/client/dist ./client/dist
 
 # Create uploads directory
-RUN mkdir -p uploads
+RUN mkdir -p /tmp/uploads
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
