@@ -297,11 +297,12 @@ app.use((err, _req, res, _next) => {
 
 
 // ── serve static files (production) ──
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const staticDir = path.resolve(__dirname, "../../client/dist");
+// In Docker, files are at /app/client/dist
+const staticDir = path.resolve(process.cwd(), "client/dist");
 
 // Basic Auth protection
 const AUTH_USER = process.env.AUTH_USER || "admin";
