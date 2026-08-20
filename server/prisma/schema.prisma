@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectStatus {
+  ACTIVE      // نشط
+  COMPLETED   // منتهي — رُدّ رأس المال
+  SUSPENDED   // متعثر
+}
+
+enum Cycle {
+  MONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  ANNUAL
+}
+
+/// نوع الاستحقاق: ربح دوري أم رد رأس المال
+enum DueKind {
+  PROFIT
+  PRINCIPAL
+}
+
+enum DueStatus {
+  PENDING     // لم يحن موعده
+  DUE         // مستحق اليوم أو متأخر
+  PARTIAL     // مدفوع جزئياً
+  PAID        // مسدد
+}
+
+model Partner {
+  id        String    @id @default(cuid())
+  name      String
+  company   String?
+  phone     String?
+  email     String?
+  notes     String?
+  projects  Project[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Project {
+  id        String        @id @default(cuid())
+  name      String
+  partner   Partner       @relation(fields: [partnerId], references: [id])
+  partnerId String
+
+  /// رأس المال بالفلس (1 دينار = 1000 فلس) — عدد صحيح، لا فواصل عائمة
+  capitalFils BigInt
+
+  /// نسبة الربح للدورة الواحدة، بالنقاط الأساسية (750 = 7.5%)
+  profitRateBp Int
+
+  cycle       Cycle     @default(MONTHLY)
+  startDate   DateTime
+  /// تاريخ نهاية المشروع ورد رأس المال — اختياري (مفتوح المدة)
+  endDate     DateTime?
+
+  status      ProjectStatus @default(ACTIVE)
+  currency    String        @default("JOD")
+  notes       String?
+
+  dues        Due[]
+  payments    Payment[]
+  documents   Document[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([partnerId, status])
+}
+
+/// دفعة مستحقة مُولّدة من جدول المشروع
+model Due {
+  id        String    @id @default(cuid())
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  kind      DueKind   @default(PROFIT)
+  /// رقم الدورة (1، 2، 3...) — لرد رأس المال يكون 0
+  seq       Int
+  dueDate   DateTime
+  amountFils BigInt
+
+  status    DueStatus @default(PENDING)
+  payments  Payment[]
+
+  /// آخر تنبيه أُرسل لهذا الاستحقاق — يمنع التكرار
+  reminderSentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, kind, seq])
+  @@index([dueDate, status])
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  due       Due?     @relation(fields: [dueId], references: [id])
+  dueId     String?
+
+  amountFils BigInt
+  paidAt     DateTime
+  method     String?   // نقدي / تحويل / شيك
+  reference  String?   // رقم الحوالة أو الشيك
+  notes      String?
+
+  documents  Document[]
+
+  createdAt DateTime @default(now())
+
+  @@index([projectId, paidAt])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  title     String
+  /// مسار محلي أو معرّف ملف على Google Drive
+  storage   String   @default("local")  // local | gdrive
+  fileRef   String
+  mimeType  String?
+  sizeBytes Int?
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String?
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  paymentId String?
+
+  createdAt DateTime @default(now())
+}
