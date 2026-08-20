@@ -23,5 +23,5 @@ RUN mkdir -p /tmp/uploads
 # Expose port
 EXPOSE 4000
 
-# Start with db push
-CMD ["sh", "-c", "echo Waiting for DB... && sleep 3 && npx prisma db push && echo Starting... && node src/index.js"]
+# Start server directly (no db push here - Render handles DB setup)
+CMD ["node", "src/index.js"]

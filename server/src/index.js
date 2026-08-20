@@ -332,8 +332,25 @@ app.get("*", (_req, res) => {
   res.sendFile(path.join(staticDir, "index.html"));
 });
 
+// ── Database connection with retry ──
+async function connectDB(retries = 5) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await prisma.$connect();
+      console.log("✅ Database connected");
+      return;
+    } catch (e) {
+      console.log(`⏳ DB connection attempt ${i + 1}/${retries} failed, retrying...`);
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  }
+  console.error("❌ Could not connect to database after retries");
+}
+
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`API على المنفذ ${PORT}`);
-  if (process.env.SMTP_HOST) startReminderJob(prisma);
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`✅ API running on port ${PORT}`);
+    if (process.env.SMTP_HOST) startReminderJob(prisma);
+  });
 });
