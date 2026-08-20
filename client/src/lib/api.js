@@ -1,10 +1,24 @@
 const BASE = "/api";
+const AUTH_HEADER = "Basic " + btoa("admin:ghannam2020");
 
 async function req(path, opts = {}) {
   const res = await fetch(BASE + path, {
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": AUTH_HEADER
+    },
     ...opts,
   });
+  if (res.status === 204) return null;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || "تعذّر إتمام الطلب");
+    err.fields = data.fields;
+    throw err;
+  }
+  return data;
+}
+
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -40,7 +54,7 @@ export async function uploadDocuments({ projectId, paymentId, files, title }) {
   if (title) fd.append("title", title);
   for (const f of files) fd.append("files", f);
 
-  const res = await fetch("/api/documents", { method: "POST", body: fd });
+  const res = await fetch("/api/documents", { method: "POST", body: fd, headers: { "Authorization": AUTH_HEADER } });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "تعذّر رفع الملف");
   return data;

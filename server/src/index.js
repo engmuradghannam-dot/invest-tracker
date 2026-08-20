@@ -273,6 +273,10 @@ app.get("/api/dashboard", wrap(async (_req, res) => {
   });
 }));
 
+
+// ── Health check ──
+app.get("/health", (_req, res) => res.json({ status: "ok", time: new Date().toISOString() }));
+
 // ── معالج الأخطاء ──────────────────────────────────────
 app.use((err, _req, res, _next) => {
   if (err instanceof z.ZodError) {
@@ -289,6 +293,43 @@ app.use((err, _req, res, _next) => {
   if (err.code === "P2003") return res.status(400).json({ error: "مرجع غير موجود" });
   console.error(err);
   res.status(500).json({ error: "خطأ في الخادم" });
+});
+
+
+// ── serve static files (production) ──
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const staticDir = path.resolve(__dirname, "../../client/dist");
+
+// Basic Auth protection
+const AUTH_USER = process.env.AUTH_USER || "admin";
+const AUTH_PASS = process.env.AUTH_PASS || "ghannam2020";
+
+app.use((req, res, next) => {
+  // Skip auth for health checks
+  if (req.path === "/health") return next();
+
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith("Basic ")) {
+    res.set("WWW-Authenticate", 'Basic realm="Invest Tracker"');
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  const [user, pass] = Buffer.from(auth.slice(6), "base64").toString().split(":");
+  if (user !== AUTH_USER || pass !== AUTH_PASS) {
+    res.set("WWW-Authenticate", 'Basic realm="Invest Tracker"');
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+  next();
+});
+
+app.use(express.static(staticDir));
+
+// SPA fallback — React Router
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(staticDir, "index.html"));
 });
 
 const PORT = process.env.PORT || 4000;
