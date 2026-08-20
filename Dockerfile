@@ -23,5 +23,5 @@ RUN mkdir -p /tmp/uploads
 # Expose port
 EXPOSE 4000
 
-# Start server directly (no db push here - Render handles DB setup)
-CMD ["node", "src/index.js"]
+# Start: push DB schema then start server
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node src/index.js"]
