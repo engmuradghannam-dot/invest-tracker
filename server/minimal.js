@@ -5,6 +5,10 @@ import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import { PrismaClient } from "@prisma/client";
 
+// Fix BigInt serialization for JSON
+BigInt.prototype.toJSON = function() { return this.toString(); };
+
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
