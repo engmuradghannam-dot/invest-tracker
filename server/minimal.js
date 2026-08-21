@@ -25,7 +25,6 @@ const memory = {
   projects: [],
   dues: [],
   payments: [],
-  documents: []
 };
 
 async function initDB() {
@@ -169,7 +168,7 @@ app.get("/api/projects/:id", async (req, res) => {
       res.json({
         ...p,
         partner: memory.partners.find(pa => pa.id === p.partnerId) || { name: "—" },
-        dues: [], payments: [], documents: [],
+        dues: [], payments: [],
         summary: { scheduledFils: 0n, paidFils: 0n, remainingFils: BigInt(p.capitalFils), collectionPct: 0 }
       });
     } else {
